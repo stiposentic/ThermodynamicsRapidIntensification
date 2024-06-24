@@ -1,0 +1,147 @@
+To compile and compute the 3DVar analyses of Sentic, Stone, and Raymond (2024)
+GRL paper, do the following involved steps.  These have been performed on
+an Ubuntu/Linux platform, so they should be compilable on other similar
+platforms.  We tested these steps on a clean Ubuntu MATE 22.04 installation 
+with sucess.
+
+1) Install the Candis software.  This can be found at:
+http://kestrel.nmt.edu/~raymond/software/candis/candis.html
+For a most basic installation of Candis, one can compile the
+following directories (by running 'make' in each directory)
+and copy the compiled executables into ones home bin directory (~/bin/):
+-- Clang/general
+-- Clang/ng3dvar
+-- Clang/ngsonde
+-- Clang/unidata (one needs the netcdf library installed for these)
+copy Python/qplot to ~/bin/ (this is a plotting python script, you will need
+python#.#-numpy and python#.#-matplotlib installed for functioning of the 
+script; also, modify the first line of the 'qplot' script to match your
+installed version of Python)
+
+One needs to compile the following with the Google Go language. After
+installing golang-go in Ubuntu, you might need to set the global variable:
+GOPATH=/home/username/Downloads/Candis/Go/ before building any of the
+subroutines (modify the path to match your Candis directory path). You compile
+the routines by running, e.g. 'go build gomask' in .../Go/src/gomask, and then copy gomask to your ~/bin/ directory.
+-- Go/src/gomask
+-- Go/src/gocat
+-- Go/src/gosndextrap
+
+2) Each 3DVar case has its own directory, for example second flight into
+Ian (2022) is in '2022_ian2' directory. Each 3DVar has a
+'list_of_sondes_CASE.txt' file, which contains the sonde file names used in
+respective 3DVar.  These lists are found in the 'LIST_OFSONDES/' directory.
+For example, Ian 2 (2022) case dropsondes are listed in 
+'LIST_OFSONDES/list_of_sondes_2022_ian2.txt'.
+
+You will have to download those dropsondes from:
+-- https://seb.noaa.gov/pub/acdata/ for all TCRI dropsondes,
+-- https://data.eol.ucar.edu/dataset/126.012 for all PREDICT dropsondes,
+-- https://data.eol.ucar.edu/dataset/502.001 for all GRIP dropsondes,
+-- https://cmr.earthdata.nasa.gov/search/concepts/C1979860836-GHRC_DAAC.html 
+     for all HS3 dropsondes. (Link to data: 
+     https://search.earthdata.nasa.gov/search?q=hs3avaps2).
+-- some pre-TCRI sondes before year 2019 will have to be downloaded from
+     https://seb.noaa.gov/pub/acdata/ (see supplemental material Table S1
+     for HRD cases before 2019)
+
+For example, first line of this file for ian2 is:
+'D20220925_070552_PQC.frd'
+so the command for downloading this file is:
+wget https://seb.noaa.gov/pub/acdata/2022/AVAPS/20220925N2/ASPEN_DATA/D20220925_070552_PQC.frd
+One can write a bash script to dwonload these automatically, which we leave
+to the user.  The other projects' data can be bulk ordered from the above links.
+
+We suggest downloading all the files from the different field campaigns into
+directory 'SONDES' and then use 'distributeSondes.sh' script to go through 
+'list_of_sondes_*.txt' files and copying each listed file in the given 3DVar 
+directory.
+Other files found in each case directory are 'mask' (the mask file for each
+3DVar case) and 'main.sh' which is the main script to run to produce a
+3DVar output.
+
+Note: We attach scripts getdropsondes.sh and movedrospondes.sh which download
+      the NHC dropsondes (first bullet point listing link to the AVAPS sondes)
+      and move the *.frd sondes to the SONDES directory.  Change the paths 
+      within those scripts to reflect the location of the scripts on your 
+      system.
+
+3) A script compile.sh needs to be run once the raw files have been downloaded
+from dropsonde databases into respective 3DVar directories.  This script runs 
+conversion scripts within each case directory to convert *.eol (for some cases)
+or *.frd (for other cases) files to *.cdf files which are used in the 3DVar 
+algoritm.
+
+NOTE: Before running the script, you need to manually fix a few sondes.
+      Delete the first line of:
+	2021_grace3: D20210818_192330_PQC.frd 
+      (The bad lines are displaced by one line, so removing the first line
+      fixes this issue)
+
+These scripts (and all others you will need) are found in the SCRIPTS
+directory of this distribution.  The user should copy them to their home bin
+directory (usualy ~/bin/).
+
+For cases with EOL files, year less than 2015, it runs avapsmakePREDICT.sh
+For cases with FRD files, years after 2019, it runs avapsmakeONR3.sh
+The convert.sh script also runs avapslonlat.sh to plot lon-lat distributions
+of the sondes for visual inspection, if there are obvious holes or huge
+distances between sondes there is an isue you need to fix.
+Some of these scripts will need to run Octave, so make sure that that
+software is installed.
+
+4) One may now run './main.sh' in each 3DVar case's directory (assuming you 
+copied all the scripts from the SCRIPTS irectory into your home bin directory).
+This will:
+  -- download a SST file, convert it into candis format and interpolate it
+     on the grid needed for the 3DVar
+  -- calculate and produce the 3DVar file in netCDF file format
+You may run the script './runAll.sh' in the main directory to run all the 
+3DVars one after another.
+
+Note:  The main.sh script runs a script which we used to get the storm
+       speed from the HURDAT2 report.  These have already been applied in the
+       main script of the main.sh file so the user does not have to worry
+       about it. In case you produce future 3DVars you wish to add to this
+       dataset, you might need to do it yourself.
+
+Note:  Directory SHIPS_DATA contains scripts for dwonloading SHIPS data 
+       (SHIPSdownload.sh) for the years relevant to this paper, and fromating
+       of the SHIPS data (SHIPSextract.sh) for the storms listed in 
+       STORM_NAMES.asc
+       We supply similar for the required HURDAT2 reports in REPORTS_DATA.
+       However, here we supply a MATLAB script for extracting the data from
+       the HURDAT2 data file which can be obtained here:
+       https://www.nhc.noaa.gov/data/ under the HURDAT2 section. As of the 
+       moment of this writing the latest file was:
+       https://www.nhc.noaa.gov/data/hurdat/hurdat2-1851-2023-051124.txt
+       Modify the REPORTS_fromHurdat2.m file with the correct file name at 
+       line 7.
+       
+--------------------------------------
+YOU ARE DONE WITH PRODUCING THE 3DVars
+--------------------------------------
+
+5) Postprocessing steps in MATLAB:
+After all the 3DVars are compiled, one can run 'getParameters.sh'
+to produce a 'getParameters.asc' with a summary of each 3DVar.
+This script also calculates other fields needed for the analysis.
+These files are used in a Matlab script to compute and average
+fields, and produce figures.
+
+Copy all of the following files into the MATLAB directory:
+*.nc
+*.pv.nc
+*.srcmr.nc
+*.srcmr3D.nc
+*.cape.nc
+*.vort.nc
+getParameters.asc
+SHIPS_DATA/SHIPS*.asc
+REPORTS_DATA/REPORT_*.asc
+
+In Matlab, running the script VAR3Danalysis.m, Matlab will compute a bunch of
+fields for analysis and plot the figures from the paper.
+
+This concludes all the steps in this README file.
+
